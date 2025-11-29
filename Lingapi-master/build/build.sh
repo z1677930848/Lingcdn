@@ -25,28 +25,45 @@ function build() {
 	ZIP="${NAME}-${OS}-${ARCH}-${TAG}-v${VERSION}.zip"
 
 	# build edge-node
-	NodeVersion=$(lookup-version "$ROOT""/../../EdgeNode/internal/const/const.go")
-	echo "building edge-node v${NodeVersion} ..."
-	EDGE_NODE_BUILD_SCRIPT=$ROOT"/../../EdgeNode/build/build.sh"
-	if [ ! -f "$EDGE_NODE_BUILD_SCRIPT" ]; then
-		echo "unable to find edge-node build script 'EdgeNode/build/build.sh'"
-		exit
+	# 支持 EDGENODE_PATH 环境变量，默认使用 ../../EdgeNode
+	if [ -z "${EDGENODE_PATH}" ]; then
+		EDGENODE_PATH="$ROOT/../../EdgeNode"
 	fi
-	cd "$ROOT""/../../EdgeNode/build" || exit
-	echo "=============================="
-	for arch in "${NODE_ARCHITECTS[@]}"; do
-		if [ ! -f "$ROOT""/../../EdgeNode/dist/edge-node-linux-${arch}-${TAG}-v${NodeVersion}.zip" ]; then
-			./build.sh linux "$arch" $TAG
+
+	# 检查 EdgeNode 目录是否存在
+	if [ ! -d "${EDGENODE_PATH}" ]; then
+		echo "warning: EdgeNode directory not found at '${EDGENODE_PATH}', skipping edge-node build"
+		NodeVersion="unknown"
+	else
+		NodeVersion=$(lookup-version "${EDGENODE_PATH}/internal/const/const.go")
+		echo "building edge-node v${NodeVersion} ..."
+		EDGE_NODE_BUILD_SCRIPT="${EDGENODE_PATH}/build/build.sh"
+		if [ ! -f "$EDGE_NODE_BUILD_SCRIPT" ]; then
+			echo "warning: edge-node build script not found at '${EDGE_NODE_BUILD_SCRIPT}', skipping edge-node build"
 		else
-			echo "use built node linux/$arch/v${NodeVersion}"
+			cd "${EDGENODE_PATH}/build" || exit
+			echo "=============================="
+			for arch in "${NODE_ARCHITECTS[@]}"; do
+				if [ ! -f "${EDGENODE_PATH}/dist/edge-node-linux-${arch}-${TAG}-v${NodeVersion}.zip" ]; then
+					./build.sh linux "$arch" $TAG
+				else
+					echo "use built node linux/$arch/v${NodeVersion}"
+				fi
+			done
+			echo "=============================="
+			cd - || exit
 		fi
-	done
-	echo "=============================="
-	cd - || exit
+	fi
 
 	rm -f "$ROOT"/deploy/*.zip
+	# 复制 edge-node zip 文件（如果存在）
 	for arch in "${NODE_ARCHITECTS[@]}"; do
-		cp "$ROOT""/../../EdgeNode/dist/edge-node-linux-${arch}-${TAG}-v${NodeVersion}.zip" "$ROOT"/deploy/edge-node-linux-"${arch}"-v"${NodeVersion}".zip
+		NODE_ZIP="${EDGENODE_PATH}/dist/edge-node-linux-${arch}-${TAG}-v${NodeVersion}.zip"
+		if [ -f "$NODE_ZIP" ]; then
+			cp "$NODE_ZIP" "$ROOT"/deploy/edge-node-linux-"${arch}"-v"${NodeVersion}".zip
+		else
+			echo "warning: edge-node zip not found at '$NODE_ZIP'"
+		fi
 	done
 
 	# build edge-dns
