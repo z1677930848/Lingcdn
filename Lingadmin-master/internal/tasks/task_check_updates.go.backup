@@ -1,0 +1,433 @@
+// Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+
+package tasks
+
+import (
+	"archive/zip"
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
+	teaconst "github.com/TeaOSLab/EdgeAdmin/internal/const"
+	"github.com/TeaOSLab/EdgeAdmin/internal/events"
+	"github.com/TeaOSLab/EdgeAdmin/internal/goman"
+	"github.com/TeaOSLab/EdgeAdmin/internal/rpc"
+	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeCommon/pkg/systemconfigs"
+	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/maps"
+	stringutil "github.com/iwind/TeaGo/utils/string"
+)
+
+func init() {
+	events.On(events.EventStart, func() {
+		var task = NewCheckUpdatesTask()
+		goman.New(func() {
+			task.Start()
+		})
+	})
+}
+
+type CheckUpdatesTask struct {
+	ticker *time.Ticker
+}
+
+func NewCheckUpdatesTask() *CheckUpdatesTask {
+	return &CheckUpdatesTask{}
+}
+
+func (this *CheckUpdatesTask) Start() {
+	// 启动后立即检查一次
+	err := this.Loop()
+	if err != nil {
+		logs.Println("[TASK][CHECK_UPDATES_TASK]" + err.Error())
+	}
+
+	// 然后每6小时检查一次
+	this.ticker = time.NewTicker(6 * time.Hour)
+	for range this.ticker.C {
+		err := this.Loop()
+		if err != nil {
+			logs.Println("[TASK][CHECK_UPDATES_TASK]" + err.Error())
+		}
+	}
+}
+
+func (this *CheckUpdatesTask) Loop() error {
+	// 检查是否开启
+	rpcClient, err := rpc.SharedRPC()
+	if err != nil {
+		return err
+	}
+	valueResp, err := rpcClient.SysSettingRPC().ReadSysSetting(rpcClient.Context(0), &pb.ReadSysSettingRequest{Code: systemconfigs.SettingCodeCheckUpdates})
+	if err != nil {
+		return err
+	}
+	var valueJSON = valueResp.ValueJSON
+	var config = &systemconfigs.CheckUpdatesConfig{AutoCheck: false}
+	if len(valueJSON) > 0 {
+		err = json.Unmarshal(valueJSON, config)
+		if err != nil {
+			return errors.New("decode config failed: " + err.Error())
+		}
+		if !config.AutoCheck {
+			return nil
+		}
+	} else {
+		return nil
+	}
+
+	// 开始检查
+	type Response struct {
+		Code    int         `json:"code"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data"`
+	}
+
+	// 目前支持Linux
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
+	var apiURL = teaconst.UpdatesURL
+	apiURL = strings.ReplaceAll(apiURL, "${os}", runtime.GOOS)
+	apiURL = strings.ReplaceAll(apiURL, "${arch}", runtime.GOARCH)
+
+	logs.Println("[TASK][CHECK_UPDATES_TASK]checking updates from:", apiURL)
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return errors.New("read api failed: " + err.Error())
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.New("read api failed: " + err.Error())
+	}
+
+	var apiResponse = &Response{}
+	err = json.Unmarshal(data, apiResponse)
+	if err != nil {
+		return errors.New("decode version data failed: " + err.Error())
+	}
+
+	if apiResponse.Code != 200 {
+		return errors.New("invalid response: " + apiResponse.Message)
+	}
+
+	var m = maps.NewMap(apiResponse.Data)
+	var dlHost = m.GetString("host")
+	var versions = m.GetSlice("versions")
+	if len(versions) > 0 {
+		for _, version := range versions {
+			var vMap = maps.NewMap(version)
+			if vMap.GetString("code") == "admin" {
+				var latestVersion = vMap.GetString("version")
+				var changelog = vMap.GetString("changelog")
+				var description = vMap.GetString("description")
+				var downloadURL = dlHost + vMap.GetString("url")
+				var fileMD5 = vMap.GetString("md5")
+
+				logs.Println("[TASK][CHECK_UPDATES_TASK]current version:", teaconst.Version, "latest version:", latestVersion)
+
+				if stringutil.VersionCompare(teaconst.Version, latestVersion) < 0 {
+					teaconst.NewVersionCode = latestVersion
+					teaconst.NewVersionDownloadURL = downloadURL
+
+					// 保存更新信息到文件
+					updateInfo := map[string]interface{}{
+						"version":     latestVersion,
+						"currentVersion": teaconst.Version,
+						"downloadURL": downloadURL,
+						"changelog":   changelog,
+						"description": description,
+						"md5":         fileMD5,
+						"checkTime":   time.Now().Format("2006-01-02 15:04:05"),
+					}
+					updateInfoJSON, _ := json.MarshalIndent(updateInfo, "", "  ")
+					_ = os.WriteFile(Tea.ConfigFile("update_info.json"), updateInfoJSON, 0644)
+
+					logs.Println("[TASK][CHECK_UPDATES_TASK]new version available:", latestVersion)
+					logs.Println("[TASK][CHECK_UPDATES_TASK]download url:", downloadURL)
+					logs.Println("[TASK][CHECK_UPDATES_TASK]changelog:", changelog)
+
+					return nil
+				} else {
+					logs.Println("[TASK][CHECK_UPDATES_TASK]no updates available, current version is latest")
+					teaconst.NewVersionCode = ""
+					teaconst.NewVersionDownloadURL = ""
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// DownloadAndInstallUpdate 下载并安装更新
+func DownloadAndInstallUpdate() error {
+	logs.Println("[UPDATE]starting update process...")
+
+	// 读取更新信息
+	updateInfoData, err := os.ReadFile(Tea.ConfigFile("update_info.json"))
+	if err != nil {
+		return errors.New("read update info failed: " + err.Error())
+	}
+
+	var updateInfo map[string]interface{}
+	err = json.Unmarshal(updateInfoData, &updateInfo)
+	if err != nil {
+		return errors.New("parse update info failed: " + err.Error())
+	}
+
+	downloadURL := updateInfo["downloadURL"].(string)
+	expectedMD5 := updateInfo["md5"].(string)
+	version := updateInfo["version"].(string)
+
+	logs.Println("[UPDATE]downloading version:", version)
+	logs.Println("[UPDATE]download url:", downloadURL)
+
+	// 创建临时目录
+	tmpDir := Tea.ConfigFile("tmp")
+	_ = os.MkdirAll(tmpDir, 0755)
+
+	// 下载文件
+	downloadFilePath := filepath.Join(tmpDir, fmt.Sprintf("ling-admin-v%s.zip", version))
+	err = downloadFile(downloadURL, downloadFilePath)
+	if err != nil {
+		return errors.New("download failed: " + err.Error())
+	}
+
+	logs.Println("[UPDATE]download completed")
+
+	// 验证MD5
+	if expectedMD5 != "" {
+		actualMD5, err := calculateMD5(downloadFilePath)
+		if err != nil {
+			return errors.New("calculate md5 failed: " + err.Error())
+		}
+		if actualMD5 != expectedMD5 {
+			_ = os.Remove(downloadFilePath)
+			return fmt.Errorf("md5 mismatch: expected %s, got %s", expectedMD5, actualMD5)
+		}
+		logs.Println("[UPDATE]md5 verification passed")
+	}
+
+	// 解压文件
+	extractDir := filepath.Join(tmpDir, "extract")
+	_ = os.RemoveAll(extractDir)
+	_ = os.MkdirAll(extractDir, 0755)
+
+	err = unzip(downloadFilePath, extractDir)
+	if err != nil {
+		return errors.New("unzip failed: " + err.Error())
+	}
+
+	logs.Println("[UPDATE]extract completed")
+
+	// 找到二进制文件
+	binaryPath := filepath.Join(extractDir, "ling-admin")
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		return errors.New("binary file not found in package")
+	}
+
+	// 备份当前版本
+	currentBinary, err := os.Executable()
+	if err != nil {
+		return errors.New("get current binary path failed: " + err.Error())
+	}
+
+	backupPath := currentBinary + ".backup." + teaconst.Version
+	err = copyFile(currentBinary, backupPath)
+	if err != nil {
+		logs.Println("[UPDATE]backup failed:", err.Error(), "- continuing anyway")
+	} else {
+		logs.Println("[UPDATE]current version backed up to:", backupPath)
+	}
+
+	// 替换二进制文件
+	err = os.Chmod(binaryPath, 0755)
+	if err != nil {
+		return errors.New("chmod new binary failed: " + err.Error())
+	}
+
+	// 先尝试直接覆盖
+	err = copyFile(binaryPath, currentBinary)
+	if err != nil {
+		return errors.New("replace binary failed: " + err.Error())
+	}
+
+	logs.Println("[UPDATE]binary updated successfully")
+
+	// 更新web目录（如果存在）
+	webSrcDir := filepath.Join(extractDir, "web")
+	if _, err := os.Stat(webSrcDir); err == nil {
+		webDestDir := Tea.Root + "/web"
+		_ = os.RemoveAll(webDestDir)
+		err = copyDir(webSrcDir, webDestDir)
+		if err != nil {
+			logs.Println("[UPDATE]web update failed:", err.Error())
+		} else {
+			logs.Println("[UPDATE]web directory updated")
+		}
+	}
+
+	// 清理临时文件
+	_ = os.Remove(downloadFilePath)
+	_ = os.RemoveAll(extractDir)
+
+	logs.Println("[UPDATE]update completed successfully, version:", version)
+	logs.Println("[UPDATE]restarting service...")
+
+	// 重启服务
+	return restartService()
+}
+
+func downloadFile(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("http status: %d", resp.StatusCode)
+	}
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func calculateMD5(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
+
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		return copyFile(path, dstPath)
+	})
+}
+
+func restartService() error {
+	// 尝试使用systemctl重启
+	cmd := exec.Command("systemctl", "restart", teaconst.SystemdServiceName)
+	err := cmd.Run()
+	if err == nil {
+		return nil
+	}
+
+	// 如果systemctl失败，尝试直接重启进程
+	logs.Println("[UPDATE]systemctl restart failed, trying direct restart")
+
+	// 延迟1秒后退出，让当前请求完成
+	time.AfterFunc(1*time.Second, func() {
+		os.Exit(0)
+	})
+
+	return nil
+}
