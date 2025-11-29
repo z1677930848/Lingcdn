@@ -1,0 +1,15 @@
+# LingCDN Admin Server Configuration Template
+# Copy this file to server.yaml and modify as needed
+
+# HTTP Server
+http:
+  listen: ":7788"
+
+# API Node Connection
+api:
+  rpc:
+    endpoints: ["127.0.0.1:8001"]
+
+# Security
+security:
+  secret: "please-change-this-secret-key"
