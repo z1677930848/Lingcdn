@@ -60,9 +60,9 @@ function build() {
 		APINodeVersion="unknown"
 	fi
 
-    # generate files
+    # generate files (optional, may fail in CI environment)
 	echo "generating files ..."
-	go run -tags $TAG "$ROOT"/../cmd/lingcdnadmin/main.go generate
+	go run -tags $TAG "$ROOT"/../cmd/lingcdnadmin/main.go generate || echo "warning: generate failed, using existing components.src.js"
 
 	# prefer npm-based build if package.json exists in web/
 	if [ -f "$ROOT"/../web/package.json ] && [ "$(which npm)" ]; then
