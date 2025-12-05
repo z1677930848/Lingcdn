@@ -145,4 +145,7 @@ import (
 	// 用户端路由（80端口）
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/user"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/user/register"
+
+	// JSON API（前后端分离）
+	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/jsonapi"
 )
