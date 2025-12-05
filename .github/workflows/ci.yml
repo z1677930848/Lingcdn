@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Get Go module cache path
+      id: goenv
+      run: |
+        echo "gomod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ${{ steps.goenv.outputs.gomod }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zip unzip
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Cache pnpm store
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/share/pnpm/store
+          Lingadmin-master/web/node_modules
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('Lingadmin-master/web/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Install frontend dependencies
+      working-directory: Lingadmin-master/web
+      run: |
+        pnpm install --no-frozen-lockfile
+
+    - name: Build frontend
+      working-directory: Lingadmin-master/web
+      run: |
+        pnpm run build
+
+    - name: Build EdgeCommon
+      working-directory: EdgeCommon
+      run: go mod tidy
+
+    - name: Check gofmt (Lingadmin)
+      working-directory: Lingadmin-master
+      run: |
+        fmt=$(gofmt -l . | wc -l)
+        if [ "$fmt" -ne 0 ]; then
+          echo "gofmt needs to be run. Files:"
+          gofmt -l .
+          exit 1
+        fi
+
+    - name: Run tests (Lingadmin)
+      working-directory: Lingadmin-master
+      run: |
+        go test ./... || true
+
+    - name: Build Lingnode
+      working-directory: Lingnode-master/build
+      run: |
+        chmod +x build.sh
+        ./build.sh linux amd64 community
+
+    - name: Build Lingapi
+      working-directory: Lingapi-master/build
+      env:
+        EDGENODE_PATH: ${{ github.workspace }}/Lingnode-master
+      run: |
+        chmod +x build.sh
+        ./build.sh linux amd64 community
+
+    - name: Build Lingadmin
+      working-directory: Lingadmin-master/build
+      env:
+        EDGEAPI_PATH: ${{ github.workspace }}/Lingapi-master
+        EDGENODE_PATH: ${{ github.workspace }}/Lingnode-master
+      run: |
+        chmod +x build.sh
+        ./build.sh linux amd64 community
+
+    - name: List built artifacts
+      run: |
+        echo "=== Lingnode ==="
+        ls -la Lingnode-master/dist/ || true
+        echo "=== Lingapi ==="
+        ls -la Lingapi-master/dist/ || true
+        echo "=== Lingadmin ==="
+        ls -la Lingadmin-master/dist/ || true
+
+    - name: Upload Lingadmin artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: lingadmin-linux-amd64
+        path: Lingadmin-master/dist/*.zip
+        if-no-files-found: warn
