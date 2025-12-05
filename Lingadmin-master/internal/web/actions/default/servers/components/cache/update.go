@@ -138,11 +138,11 @@ func (this *UpdateAction) RunPost(params struct {
 	}
 
 	_, err = this.RPC().HTTPCachePolicyRPC().UpdateHTTPCachePolicy(this.AdminContext(), &pb.UpdateHTTPCachePolicyRequest{
-		HttpCachePolicyId:    params.CachePolicyId,
-		IsOn:                 params.IsOn,
-		Name:                 params.Name,
-		Description:          params.Description,
-		CapacityJSON:         params.CapacityJSON,
+		HttpCachePolicyId: params.CachePolicyId,
+		IsOn:              params.IsOn,
+		Name:              params.Name,
+		Description:       params.Description,
+		CapacityJSON:      params.CapacityJSON,
 		// MaxKeys: not available in EdgeCommon 1.0.0
 		MaxSizeJSON:          params.MaxSizeJSON,
 		Type:                 params.Type,

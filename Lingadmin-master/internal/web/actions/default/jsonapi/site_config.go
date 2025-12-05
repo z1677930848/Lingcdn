@@ -28,12 +28,12 @@ func (this *SiteConfigAction) RunGet(params struct{}) {
 	}
 
 	this.SuccessData(map[string]interface{}{
-		"projectName":        systemName,
-		"version":            version,
-		"showVersion":        showVersion,
-		"loginCaptchaSwitch": 1, // 开启验证码
+		"projectName":         systemName,
+		"version":             version,
+		"showVersion":         showVersion,
+		"loginCaptchaSwitch":  1, // 开启验证码
 		"loginRegisterSwitch": 0, // 关闭注册
-		"i18nSwitch":         false,
-		"defaultLanguage":    "zh-CN",
+		"i18nSwitch":          false,
+		"defaultLanguage":     "zh-CN",
 	})
 }

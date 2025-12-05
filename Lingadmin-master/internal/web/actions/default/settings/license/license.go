@@ -12,10 +12,10 @@ import (
 
 type License struct {
 	Code      string `json:"code"`
-	Type      string `json:"type"`       // trial(10), standard(30), professional(60), enterprise(100), offline(unlimited)
+	Type      string `json:"type"` // trial(10), standard(30), professional(60), enterprise(100), offline(unlimited)
 	Company   string `json:"company"`
 	Email     string `json:"email"`
-	MaxNodes  int    `json:"maxNodes"`   // 0 means unlimited
+	MaxNodes  int    `json:"maxNodes"` // 0 means unlimited
 	ExpireAt  string `json:"expireAt"`
 	CreatedAt string `json:"createdAt"`
 	IsValid   bool   `json:"isValid"`

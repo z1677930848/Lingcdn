@@ -2,8 +2,8 @@
   <div>
     <div class="n-layout-page-header">
       <n-card :bordered="false" title="关于">
-        {{ name }} 是一个基于 goframe2，vue3，vite2，TypeScript，uniapp
-        的中后台解决方案，它可以帮助你快速搭建企业级中后台项目，相信不管是从新技术使用还是其他方面，都能帮助到你，持续更新中。
+        {{ name }} 是 LingCDN 管理端的前端界面，基于 Vue3/Vite/TypeScript。
+        你可以在此完成系统配置、权限管理、监控与运营等工作。
       </n-card>
     </div>
     <n-card
@@ -14,7 +14,7 @@
       :segmented="{ content: true }"
     >
       <n-descriptions bordered label-placement="left" class="py-2">
-        <n-descriptions-item label="HotGo版本">
+        <n-descriptions-item label="版本">
           <n-tag type="info"> {{ config?.version }}</n-tag>
         </n-descriptions-item>
         <n-descriptions-item label="最后编译时间">
@@ -22,31 +22,12 @@
         </n-descriptions-item>
         <n-descriptions-item label="文档地址">
           <div class="flex items-center">
-            <a
-              href="https://github.com/bufanyun/hotgo/tree/v2.0/docs/guide-zh-CN"
-              class="py-2"
-              target="_blank"
-              >查看文档地址</a
-            >
+            <a href="https://docs.lingcdn.cloud" class="py-2" target="_blank">查看文档</a>
           </div>
         </n-descriptions-item>
-        <n-descriptions-item label="预览地址">
+        <n-descriptions-item label="官网">
           <div class="flex items-center">
-            <a href="https://hotgo.facms.cn/admin" class="py-2" target="_blank">查看预览地址</a>
-          </div>
-        </n-descriptions-item>
-        <n-descriptions-item label="Github">
-          <div class="flex items-center">
-            <a href="https://github.com/bufanyun/hotgo" class="py-2" target="_blank"
-              >查看Github地址</a
-            >
-          </div>
-        </n-descriptions-item>
-        <n-descriptions-item label="QQ交流群">
-          <div class="flex items-center">
-            <a href="https://jq.qq.com/?_wv=1027&k=izJg29Cx" class="py-2" target="_blank"
-              >点击链接加入群聊【HotGo 交流群】</a
-            >
+            <a href="https://lingcdn.cloud" class="py-2" target="_blank">LingCDN 官方网站</a>
           </div>
         </n-descriptions-item>
       </n-descriptions>

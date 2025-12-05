@@ -59,11 +59,11 @@ func main() {
 		}
 
 		// reset local ap
-i
+		i
 		var apiNodeExe = Tea.Root + "/sk-api/bin/sk-api"
 		_, err = os.Stat(apiNodeExe)
 		if err != nil && os.IsNotExist(err) {
-			// 
+			//
 			apiNodeExe = Tea.Root + "/edge-api/bin/edge-api"
 			_, err = os.Stat(apiNodeExe)
 		}

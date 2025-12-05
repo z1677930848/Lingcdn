@@ -12,10 +12,10 @@ import (
 
 type License struct {
 	Code      string `json:"code"`
-	Type      string `json:"type"`       // trial(10), standard(30), professional(60), enterprise(100), offline(unlimited)
+	Type      string `json:"type"` // trial(10), standard(30), professional(60), enterprise(100), offline(unlimited)
 	Company   string `json:"company"`
 	Email     string `json:"email"`
-	MaxNodes  int    `json:"maxNodes"`   // 0 means unlimited
+	MaxNodes  int    `json:"maxNodes"` // 0 means unlimited
 	ExpireAt  string `json:"expireAt"`
 	CreatedAt string `json:"createdAt"`
 	IsValid   bool   `json:"isValid"`
@@ -23,8 +23,7 @@ type License struct {
 
 var licensePath = "/opt/lingcdn/configs/license.json"
 
-// GetMaxNodesByType returns the max nodes limit for a license 
-type
+// GetMaxNodesByType returns the max nodes limit for a license type
 func GetMaxNodesByType(licenseType string) int {
 	switch licenseType {
 	case "trial":

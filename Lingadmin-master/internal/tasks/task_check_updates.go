@@ -31,6 +31,21 @@ import (
 	stringutil "github.com/iwind/TeaGo/utils/string"
 )
 
+var (
+	metaHTTPClient     = &http.Client{Timeout: 30 * time.Second}
+	downloadHTTPClient = &http.Client{Timeout: 30 * time.Minute}
+)
+
+type UpdateInfo struct {
+	Version        string `json:"version"`
+	CurrentVersion string `json:"currentVersion"`
+	DownloadURL    string `json:"downloadURL"`
+	Changelog      string `json:"changelog"`
+	Description    string `json:"description"`
+	SHA256         string `json:"sha256"`
+	CheckTime      string `json:"checkTime"`
+}
+
 func init() {
 	events.On(events.EventStart, func() {
 		var task = NewCheckUpdatesTask()
@@ -38,7 +53,7 @@ func init() {
 			task.Start()
 		})
 
-		// 鍚姩涓存椂鏂囦欢娓呯悊浠诲姟
+		// 閸氼垰濮╂稉瀛樻閺傚洣娆㈠〒鍛倞娴犺濮?
 		utils.ScheduleCleanupTask()
 	})
 }
@@ -51,10 +66,10 @@ type CheckUpdatesTask struct {
 }
 
 func NewCheckUpdatesTask() *CheckUpdatesTask {
-	// 鍒涘缓澶氶€氶亾閫氱煡鍣?
+	// 閸掓稑缂撴径姘垛偓姘朵壕闁氨鐓￠崳?
 	multiNotifier := utils.NewMultiNotifier()
 	multiNotifier.AddNotifier(utils.NewLogNotifier())
-	// 鍙牴鎹厤缃坊鍔犳洿澶氶€氱煡鍣?
+	// 閸欘垱鐗撮幑顕€鍘ょ純顔藉潑閸旂姵娲挎径姘垛偓姘辩叀閸?
 	// multiNotifier.AddNotifier(utils.NewWebhookNotifier("http://your-webhook-url"))
 
 	return &CheckUpdatesTask{
@@ -65,13 +80,13 @@ func NewCheckUpdatesTask() *CheckUpdatesTask {
 }
 
 func (this *CheckUpdatesTask) Start() {
-	// 鍚姩鍚庣珛鍗虫鏌ヤ竴娆?
+	// 閸氼垰濮╅崥搴ｇ彌閸楄櫕顥呴弻銉ょ濞?
 	err := this.Loop()
 	if err != nil {
 		logs.Println("[TASK][CHECK_UPDATES_TASK]" + err.Error())
 	}
 
-	// 鐒跺悗姣?灏忔椂妫€鏌ヤ竴娆?
+	// 閻掕泛鎮楀В?鐏忓繑妞傚Λ鈧弻銉ょ濞?
 	this.ticker = time.NewTicker(6 * time.Hour)
 	for range this.ticker.C {
 		err := this.Loop()
@@ -82,7 +97,7 @@ func (this *CheckUpdatesTask) Start() {
 }
 
 func (this *CheckUpdatesTask) Loop() error {
-	// 妫€鏌ユ槸鍚﹀紑鍚?
+	// 濡偓閺屻儲妲搁崥锕€绱戦崥?
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		return err
@@ -105,14 +120,14 @@ func (this *CheckUpdatesTask) Loop() error {
 		return nil
 	}
 
-	// 寮€濮嬫鏌?
+	// 瀵偓婵顥呴弻?
 	type Response struct {
 		Code    int         `json:"code"`
 		Message string      `json:"message"`
 		Data    interface{} `json:"data"`
 	}
 
-	// 鐩墠鏀寔Linux
+	// 閻╊喖澧犻弨顖涘瘮Linux
 	if runtime.GOOS != "linux" {
 		return nil
 	}
@@ -123,14 +138,16 @@ func (this *CheckUpdatesTask) Loop() error {
 
 	logs.Println("[TASK][CHECK_UPDATES_TASK]checking updates from:", apiURL)
 
-	resp, err := http.Get(apiURL)
+	resp, err := metaHTTPClient.Get(apiURL)
 	if err != nil {
 		return errors.New("read api failed: " + err.Error())
 	}
-
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("read api failed: http status %d", resp.StatusCode)
+	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errors.New("read api failed: " + err.Error())
@@ -165,15 +182,15 @@ func (this *CheckUpdatesTask) Loop() error {
 					teaconst.NewVersionCode = latestVersion
 					teaconst.NewVersionDownloadURL = downloadURL
 
-					// 淇濆瓨鏇存柊淇℃伅鍒版枃浠?
-					updateInfo := map[string]interface{}{
-						"version":        latestVersion,
-						"currentVersion": teaconst.Version,
-						"downloadURL":    downloadURL,
-						"changelog":      changelog,
-						"description":    description,
-						"sha256":         fileSHA256,
-						"checkTime":      time.Now().Format("2006-01-02 15:04:05"),
+					// 娣囨繂鐡ㄩ弴瀛樻煀娣団剝浼呴崚鐗堟瀮娴?
+					updateInfo := &UpdateInfo{
+						Version:        latestVersion,
+						CurrentVersion: teaconst.Version,
+						DownloadURL:    downloadURL,
+						Changelog:      changelog,
+						Description:    description,
+						SHA256:         fileSHA256,
+						CheckTime:      time.Now().Format("2006-01-02 15:04:05"),
 					}
 					updateInfoJSON, _ := json.MarshalIndent(updateInfo, "", "  ")
 					_ = os.WriteFile(Tea.ConfigFile("update_info.json"), updateInfoJSON, 0644)
@@ -195,12 +212,12 @@ func (this *CheckUpdatesTask) Loop() error {
 	return nil
 }
 
-// DownloadAndInstallUpdate 涓嬭浇骞跺畨瑁呮洿鏂帮紙鏀硅繘鐗堬級
+// DownloadAndInstallUpdate 娑撳娴囬獮璺虹暔鐟佸懏娲块弬甯礄閺€纭呯箻閻楀牞绱?
 func DownloadAndInstallUpdate() error {
 	startTime := time.Now()
 	logs.Println("[UPDATE]starting update process...")
 
-	// 鍒涘缓鍗囩骇鏃ュ織
+	// 閸掓稑缂撻崡鍥╅獓閺冦儱绻?
 	logManager := utils.SharedUpgradeLogManager()
 	upgradeLog := &utils.UpgradeLog{
 		Component:  "admin",
@@ -210,7 +227,7 @@ func DownloadAndInstallUpdate() error {
 	}
 	_ = logManager.CreateLog(upgradeLog)
 
-	// 鍒涘缓涓存椂鏂囦欢娓呯悊鍣?
+	// 閸掓稑缂撴稉瀛樻閺傚洣娆㈠〒鍛倞閸?
 	cleaner := utils.NewTempFileCleaner()
 	defer func() {
 		if err := cleaner.CleanupAll(); err != nil {
@@ -218,12 +235,12 @@ func DownloadAndInstallUpdate() error {
 		}
 	}()
 
-	// 鍒涘缓閫氱煡鍣?
+	// 閸掓稑缂撻柅姘辩叀閸?
 	notifier := utils.NewMultiNotifier()
 	notifier.AddNotifier(utils.NewLogNotifier())
 	notifier.AddNotifier(utils.NewConsoleNotifier())
 
-	// 璇诲彇鏇存柊淇℃伅
+	// ??????
 	updateInfoData, err := os.ReadFile(Tea.ConfigFile("update_info.json"))
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageCheckVersion, utils.ErrCodeNetworkFailed,
@@ -232,7 +249,7 @@ func DownloadAndInstallUpdate() error {
 		return upgradeErr
 	}
 
-	var updateInfo map[string]interface{}
+	var updateInfo UpdateInfo
 	err = json.Unmarshal(updateInfoData, &updateInfo)
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageCheckVersion, utils.ErrCodeInvalidResponse,
@@ -241,34 +258,51 @@ func DownloadAndInstallUpdate() error {
 		return upgradeErr
 	}
 
-	downloadURL := updateInfo["downloadURL"].(string)
-	expectedSHA256 := updateInfo["sha256"].(string)
-	version := updateInfo["version"].(string)
+	if updateInfo.DownloadURL == "" || updateInfo.Version == "" {
+		upgradeErr := utils.NewUpgradeError(utils.StageCheckVersion, utils.ErrCodeInvalidResponse,
+			"download url or version missing in update info", nil)
+		handleUpgradeError(upgradeLog, logManager, notifier, upgradeErr)
+		return upgradeErr
+	}
 
+	if updateInfo.SHA256 == "" {
+		upgradeErr := utils.NewUpgradeError(utils.StageVerify, utils.ErrCodeVerifyFailed,
+			"sha256 not provided in update info", nil)
+		handleUpgradeError(upgradeLog, logManager, notifier, upgradeErr)
+		return upgradeErr
+	}
+
+	downloadURL := updateInfo.DownloadURL
+	expectedSHA256 := updateInfo.SHA256
+	version := updateInfo.Version
 	upgradeLog.NewVersion = version
 	upgradeLog.DownloadURL = downloadURL
 	_ = logManager.UpdateLog(upgradeLog)
 
-	// 閫氱煡寮€濮?
+	// 闁氨鐓″鈧慨?
 	notifier.NotifyStart("admin", version)
 
 	logs.Println("[UPDATE]downloading version:", version)
 	logs.Println("[UPDATE]download url:", downloadURL)
 
-	// 鍒涘缓涓存椂鐩綍
+	// 閸掓稑缂撴稉瀛樻閻╊喖缍?
 	tmpDir := Tea.ConfigFile("tmp")
 	_ = os.MkdirAll(tmpDir, 0755)
 
-	// 涓嬭浇鏂囦欢
+	// 娑撳娴囬弬鍥︽
 	downloadFilePath := filepath.Join(tmpDir, fmt.Sprintf("ling-admin-v%s.zip", version))
 	cleaner.AddFile(downloadFilePath)
 
 	upgradeLog.Status = utils.StatusDownloading
 	_ = logManager.UpdateLog(upgradeLog)
 
-	err = downloadFileWithProgress(downloadURL, downloadFilePath, func(progress float32, speed float64) {
+	err = downloadFileWithProgress(downloadHTTPClient, downloadURL, downloadFilePath, func(progress float32, speed float64) {
 		message := fmt.Sprintf("Downloading: %.1f MB/s", speed)
-		notifier.NotifyProgress("admin", progress*0.6, message)
+		normalizedProgress := progress
+		if normalizedProgress < 0 {
+			normalizedProgress = 0
+		}
+		notifier.NotifyProgress("admin", normalizedProgress*0.6, message)
 	})
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageDownload, utils.ErrCodeDownloadFailed,
@@ -284,7 +318,7 @@ func DownloadAndInstallUpdate() error {
 	logs.Println("[UPDATE]download completed")
 	notifier.NotifyProgress("admin", 0.65, "Download complete, verifying...")
 
-	// 楠岃瘉SHA256
+	// 妤犲矁鐦塖HA256
 	upgradeLog.Status = utils.StatusVerifying
 	_ = logManager.UpdateLog(upgradeLog)
 
@@ -306,7 +340,7 @@ func DownloadAndInstallUpdate() error {
 		notifier.NotifyProgress("admin", 0.7, "Verification passed")
 	}
 
-	// 瑙ｅ帇鏂囦欢
+	// 鐟欙絽甯囬弬鍥︽
 	extractDir := filepath.Join(tmpDir, "extract")
 	_ = os.RemoveAll(extractDir)
 	_ = os.MkdirAll(extractDir, 0755)
@@ -324,7 +358,7 @@ func DownloadAndInstallUpdate() error {
 	logs.Println("[UPDATE]extract completed")
 	notifier.NotifyProgress("admin", 0.85, "Installing...")
 
-	// 鎵惧埌浜岃繘鍒舵枃浠?
+	// 閹垫儳鍩屾禍宀冪箻閸掕埖鏋冩禒?
 	binaryPath := filepath.Join(extractDir, "ling-admin")
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
 		upgradeErr := utils.NewUpgradeError(utils.StageInstall, utils.ErrCodeInstallFailed,
@@ -336,7 +370,7 @@ func DownloadAndInstallUpdate() error {
 	upgradeLog.Status = utils.StatusInstalling
 	_ = logManager.UpdateLog(upgradeLog)
 
-	// 澶囦唤褰撳墠鐗堟湰
+	// 婢跺洣鍞よぐ鎾冲閻楀牊婀?
 	currentBinary, err := os.Executable()
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageBackup, utils.ErrCodeBackupFailed,
@@ -346,20 +380,21 @@ func DownloadAndInstallUpdate() error {
 	}
 
 	backupPath := currentBinary + ".backup." + teaconst.Version
-	err = copyFile(currentBinary, backupPath)
-	if err != nil {
-		logs.Println("[UPDATE]backup failed:", err.Error(), "- continuing anyway")
-	} else {
-		logs.Println("[UPDATE]current version backed up to:", backupPath)
-		upgradeLog.BackupPath = backupPath
-		_ = logManager.UpdateLog(upgradeLog)
-		// 澶囦唤鏂囦欢淇濈暀7澶╁悗娓呯悊
-		cleaner.AddFileWithDelay(backupPath, 7*24*time.Hour)
+	if err := copyFile(currentBinary, backupPath); err != nil {
+		upgradeErr := utils.NewUpgradeError(utils.StageBackup, utils.ErrCodeBackupFailed,
+			"backup current binary failed", err)
+		handleUpgradeError(upgradeLog, logManager, notifier, upgradeErr)
+		return upgradeErr
 	}
+	logs.Println("[UPDATE]current version backed up to:", backupPath)
+	upgradeLog.BackupPath = backupPath
+	_ = logManager.UpdateLog(upgradeLog)
+	// ??????7????
+	cleaner.AddFileWithDelay(backupPath, 7*24*time.Hour)
 
 	notifier.NotifyProgress("admin", 0.9, "Replacing binary...")
 
-	// 鏇挎崲浜岃繘鍒舵枃浠?
+	// 閺囨寧宕叉禍宀冪箻閸掕埖鏋冩禒?
 	err = os.Chmod(binaryPath, 0755)
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageInstall, utils.ErrCodePermissionDenied,
@@ -368,7 +403,7 @@ func DownloadAndInstallUpdate() error {
 		return upgradeErr
 	}
 
-	// 鍏堝皾璇曠洿鎺ヨ鐩?
+	// 閸忓牆鐨剧拠鏇犳纯閹恒儴顩惄?
 	err = copyFile(binaryPath, currentBinary)
 	if err != nil {
 		upgradeErr := utils.NewUpgradeError(utils.StageInstall, utils.ErrCodeInstallFailed,
@@ -379,7 +414,7 @@ func DownloadAndInstallUpdate() error {
 
 	logs.Println("[UPDATE]binary updated successfully")
 
-	// 鏇存柊web鐩綍锛堝鏋滃瓨鍦級
+	// 閺囧瓨鏌妛eb閻╊喖缍嶉敍鍫濐洤閺嬫粌鐡ㄩ崷顭掔礆
 	webSrcDir := filepath.Join(extractDir, "web")
 	if _, err := os.Stat(webSrcDir); err == nil {
 		webDestDir := Tea.Root + "/web"
@@ -394,7 +429,7 @@ func DownloadAndInstallUpdate() error {
 
 	notifier.NotifyProgress("admin", 0.95, "Update complete, restarting...")
 
-	// 鏇存柊鎴愬姛
+	// 閺囧瓨鏌婇幋鎰
 	duration := time.Since(startTime)
 	upgradeLog.Status = utils.StatusSuccess
 	upgradeLog.EndTime = time.Now()
@@ -406,11 +441,11 @@ func DownloadAndInstallUpdate() error {
 
 	notifier.NotifySuccess("admin", version, duration)
 
-	// 閲嶅惎鏈嶅姟
+	// 闁插秴鎯庨張宥呭
 	return restartService()
 }
 
-// handleUpgradeError 澶勭悊鍗囩骇閿欒
+// handleUpgradeError 婢跺嫮鎮婇崡鍥╅獓闁挎瑨顕?
 func handleUpgradeError(log *utils.UpgradeLog, logManager *utils.UpgradeLogManager,
 	notifier utils.UpdateNotifier, err *utils.UpgradeError) {
 	log.Status = utils.StatusFailed
@@ -423,9 +458,12 @@ func handleUpgradeError(log *utils.UpgradeLog, logManager *utils.UpgradeLogManag
 	notifier.NotifyFailed(log.Component, log.NewVersion, err)
 }
 
-// downloadFileWithProgress 涓嬭浇鏂囦欢骞舵樉绀鸿繘搴?
-func downloadFileWithProgress(url, dest string, progressCallback func(progress float32, speed float64)) error {
-	resp, err := http.Get(url)
+// downloadFileWithProgress 娑撳娴囬弬鍥︽楠炶埖妯夌粈楦跨箻鎼?
+func downloadFileWithProgress(client *http.Client, url, dest string, progressCallback func(progress float32, speed float64)) error {
+	if client == nil {
+		client = downloadHTTPClient
+	}
+	resp, err := client.Get(url)
 	if err != nil {
 		return err
 	}
@@ -442,6 +480,7 @@ func downloadFileWithProgress(url, dest string, progressCallback func(progress f
 	defer out.Close()
 
 	contentLength := resp.ContentLength
+	hasContentLength := contentLength > 0
 	downloaded := int64(0)
 	startTime := time.Now()
 	lastNotifyTime := startTime
@@ -457,11 +496,15 @@ func downloadFileWithProgress(url, dest string, progressCallback func(progress f
 
 			downloaded += int64(n)
 
-			// 姣忕鏇存柊涓€娆¤繘搴?
+			// download progress update; speed still reported when size unknown
 			if time.Since(lastNotifyTime) >= time.Second {
-				progress := float32(downloaded) / float32(contentLength)
 				speed := float64(downloaded) / time.Since(startTime).Seconds() / 1024 / 1024
-				progressCallback(progress, speed)
+				if hasContentLength {
+					progress := float32(downloaded) / float32(contentLength)
+					progressCallback(progress, speed)
+				} else {
+					progressCallback(-1, speed)
+				}
 				lastNotifyTime = time.Now()
 			}
 		}
@@ -474,15 +517,16 @@ func downloadFileWithProgress(url, dest string, progressCallback func(progress f
 		}
 	}
 
-	// 鏈€鍚庝竴娆¤繘搴︽洿鏂?
-	if contentLength > 0 {
-		speed := float64(downloaded) / time.Since(startTime).Seconds() / 1024 / 1024
+	// final speed/progress update
+	speed := float64(downloaded) / time.Since(startTime).Seconds() / 1024 / 1024
+	if hasContentLength {
 		progressCallback(1.0, speed)
+	} else {
+		progressCallback(-1, speed)
 	}
 
 	return nil
 }
-
 func calculateSHA256(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -558,7 +602,7 @@ func copyFile(src, dst string) error {
 		return err
 	}
 
-	// 鍚屾鍒扮鐩?
+	// 閸氬本顒為崚鎵梿閻?
 	err = destFile.Sync()
 	return err
 }
@@ -585,14 +629,14 @@ func copyDir(src, dst string) error {
 }
 
 func restartService() error {
-	// 尝试使用systemctl重启
+	// 灏濊瘯浣跨敤systemctl閲嶅惎
 	cmd := exec.Command("systemctl", "restart", teaconst.SystemdServiceName)
 	err := cmd.Run()
 	if err == nil {
 		return nil
 	}
 
-	// 如果systemctl失败，则直接拉起新进程并退出当前进程
+	// 濡傛灉systemctl澶辫触锛屽垯鐩存帴鎷夎捣鏂拌繘绋嬪苟閫€鍑哄綋鍓嶈繘绋?
 	logs.Println("[UPDATE]systemctl restart failed, trying direct restart")
 
 	exePath, pathErr := os.Executable()
@@ -608,7 +652,7 @@ func restartService() error {
 		return fmt.Errorf("start new process failed: %w", startErr)
 	}
 
-	// 延迟退出，保证当前请求完成
+	// 寤惰繜閫€鍑猴紝淇濊瘉褰撳墠璇锋眰瀹屾垚
 	time.AfterFunc(1*time.Second, func() {
 		os.Exit(0)
 	})

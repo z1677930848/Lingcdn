@@ -100,13 +100,13 @@ func (this *CreateAction) RunPost(params struct {
 	// 全局服务配置 - DefaultGlobalServerConfig not available in EdgeCommon 1.0.0
 	var globalServerConfigJSON []byte = nil
 	/*
-	var globalServerConfig = serverconfigs.DefaultGlobalServerConfig()
-	globalServerConfig.HTTPAll.MatchDomainStrictly = params.MatchDomainStrictly
-	globalServerConfigJSON, err := json.Marshal(globalServerConfig)
-	if err != nil {
-		this.ErrorPage(err)
-		return
-	}
+		var globalServerConfig = serverconfigs.DefaultGlobalServerConfig()
+		globalServerConfig.HTTPAll.MatchDomainStrictly = params.MatchDomainStrictly
+		globalServerConfigJSON, err := json.Marshal(globalServerConfig)
+		if err != nil {
+			this.ErrorPage(err)
+			return
+		}
 	*/
 
 	// 系统服务

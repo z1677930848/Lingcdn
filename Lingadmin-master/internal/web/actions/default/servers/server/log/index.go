@@ -83,7 +83,7 @@ func (this *IndexAction) RunPost(params struct {
 
 	var ipList = []string{}
 	var wafMaps = []maps.Map{}
-	
+
 	var accessLogs = accessLogsResp.HttpAccessLogs
 	if len(accessLogs) == 0 {
 		accessLogs = []*pb.HTTPAccessLog{}

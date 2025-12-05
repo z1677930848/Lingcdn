@@ -125,9 +125,9 @@ import (
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/server"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/transfer"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/ui"
-	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/userui"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/updates"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/upgrade"
+	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/settings/userui"
 
 	// 恢复
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/recover"
@@ -145,6 +145,9 @@ import (
 	// 用户端路由（80端口）
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/user"
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/user/register"
+
+	// 工单 JSON API
+	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/api/tickets"
 
 	// JSON API（前后端分离）
 	_ "github.com/TeaOSLab/EdgeAdmin/internal/web/actions/default/jsonapi"

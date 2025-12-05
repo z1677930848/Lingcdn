@@ -17,7 +17,6 @@ func init() {
 			Post("/check", new(CheckAction)).
 			Post("/delete", new(DeleteAction)).
 			Post("/deleteBatch", new(DeleteBatchAction)).
-
 			EndAll()
 	})
 }

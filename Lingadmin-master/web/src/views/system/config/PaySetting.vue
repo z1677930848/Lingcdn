@@ -184,6 +184,10 @@
     payQQPayAppId: '',
     payQQPayMchId: '',
     payQQPayApiKey: '',
+    payYiPayMchId: '',
+    payYiPayKey: '',
+    payYiPayGateway: '',
+    payYiPayType: '',
   });
 
   function formSubmit() {

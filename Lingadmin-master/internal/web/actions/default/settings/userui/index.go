@@ -48,20 +48,20 @@ func (this *IndexAction) RunGet(params struct{}) {
 }
 
 func (this *IndexAction) RunPost(params struct {
-	ProductName        string
-	UserSystemName     string
-	ShowPageFooter     bool
-	PageFooterHTML     string
-	ShowVersion        bool
-	Version            string
-	ShowFinance        bool
-	FaviconFile        *actions.File
-	LogoFile           *actions.File
-	TimeZone           string
-	ClientIPHeaderNames string
-	CheckCNAME         bool
-	BandwidthUnit      systemconfigs.BandwidthUnit
-	ShowTrafficCharts  bool
+	ProductName                  string
+	UserSystemName               string
+	ShowPageFooter               bool
+	PageFooterHTML               string
+	ShowVersion                  bool
+	Version                      string
+	ShowFinance                  bool
+	FaviconFile                  *actions.File
+	LogoFile                     *actions.File
+	TimeZone                     string
+	ClientIPHeaderNames          string
+	CheckCNAME                   bool
+	BandwidthUnit                systemconfigs.BandwidthUnit
+	ShowTrafficCharts            bool
 	ShowCacheInfoInTrafficCharts bool
 	ShowBandwidthCharts          bool
 	BandwidthPercentile          int32

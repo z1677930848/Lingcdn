@@ -52,10 +52,10 @@ func (this *IndexAction) RunGet(params struct {
 		allServers = true
 	}
 
-	// 
+	//
 	this.Data["tags"] = nodelogutils.FindNodeCommonTags()
 
-	// 
+	//
 	countUnreadResp, err := this.RPC().NodeLogRPC().CountNodeLogs(this.AdminContext(), &pb.CountNodeLogsRequest{
 		Role:     nodeconfigs.NodeRoleNode,
 		IsUnread: true,
@@ -66,7 +66,7 @@ func (this *IndexAction) RunGet(params struct {
 	}
 	this.Data["countUnreadLogs"] = countUnreadResp.Count
 
-	// 
+	//
 	countNeedFixResp, err := this.RPC().NodeLogRPC().CountNodeLogs(this.AdminContext(), &pb.CountNodeLogsRequest{
 		Role:       nodeconfigs.NodeRoleNode,
 		AllServers: true,
@@ -78,7 +78,7 @@ func (this *IndexAction) RunGet(params struct {
 	}
 	this.Data["countNeedFixLogs"] = countNeedFixResp.Count
 
-	// 
+	//
 	countResp, err := this.RPC().NodeLogRPC().CountNodeLogs(this.AdminContext(), &pb.CountNodeLogsRequest{
 		NodeClusterId: params.ClusterId,
 		NodeId:        params.NodeId,
@@ -124,7 +124,7 @@ func (this *IndexAction) RunGet(params struct {
 
 	var logs = []maps.Map{}
 	for _, log := range logsResp.NodeLogs {
-		// 
+		//
 		nodeResp, err := this.RPC().NodeRPC().FindEnabledNode(this.AdminContext(), &pb.FindEnabledNodeRequest{NodeId: log.NodeId})
 		if err != nil {
 			continue
@@ -141,7 +141,7 @@ func (this *IndexAction) RunGet(params struct {
 			}
 		}
 
-		// 
+		//
 		var serverMap = maps.Map{"id": 0}
 		if log.ServerId > 0 {
 			serverResp, err := this.RPC().ServerRPC().FindEnabledUserServerBasic(this.AdminContext(), &pb.FindEnabledUserServerBasicRequest{ServerId: log.ServerId})

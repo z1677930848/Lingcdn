@@ -457,14 +457,14 @@ func (this *CreateAction) RunPost(params struct {
 	}
 	// Unix protocol not supported in current version
 	/*
-	if unixConfig != nil {
-		data, err := json.Marshal(unixConfig)
-		if err != nil {
-			this.ErrorPage(err)
-			return
+		if unixConfig != nil {
+			data, err := json.Marshal(unixConfig)
+			if err != nil {
+				this.ErrorPage(err)
+				return
+			}
+			req.UnixJSON = data
 		}
-		req.UnixJSON = data
-	}
 	*/
 	if udpConfig != nil {
 		data, err := json.Marshal(udpConfig)

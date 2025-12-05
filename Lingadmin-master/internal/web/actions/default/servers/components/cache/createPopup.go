@@ -93,10 +93,10 @@ func (this *CreatePopupAction) RunPost(params struct {
 		return
 	}
 	createResp, err := this.RPC().HTTPCachePolicyRPC().CreateHTTPCachePolicy(this.AdminContext(), &pb.CreateHTTPCachePolicyRequest{
-		IsOn:                 params.IsOn,
-		Name:                 params.Name,
-		Description:          params.Description,
-		CapacityJSON:         params.CapacityJSON,
+		IsOn:         params.IsOn,
+		Name:         params.Name,
+		Description:  params.Description,
+		CapacityJSON: params.CapacityJSON,
 		// MaxKeys: not available in EdgeCommon 1.0.0
 		MaxSizeJSON:          params.MaxSizeJSON,
 		Type:                 params.Type,

@@ -29,15 +29,15 @@ func (this *StatusAction) RunPost(params struct {
 	// 读取全局配置 - dao.SharedSysSettingDAO not available in EdgeCommon 1.0.0
 	var auditingPrompt = ""
 	/*
-	globalConfig, err := dao.SharedSysSettingDAO.ReadGlobalConfig(this.AdminContext())
-	if err != nil {
-		this.ErrorPage(err)
-		return
-	}
-	auditingPrompt := ""
-	if globalConfig != nil {
-		auditingPrompt = globalConfig.HTTPAll.DomainAuditingPrompt
-	}
+		globalConfig, err := dao.SharedSysSettingDAO.ReadGlobalConfig(this.AdminContext())
+		if err != nil {
+			this.ErrorPage(err)
+			return
+		}
+		auditingPrompt := ""
+		if globalConfig != nil {
+			auditingPrompt = globalConfig.HTTPAll.DomainAuditingPrompt
+		}
 	*/
 
 	wg := sync.WaitGroup{}

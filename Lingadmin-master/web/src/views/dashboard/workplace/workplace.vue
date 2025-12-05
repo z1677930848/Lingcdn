@@ -168,7 +168,7 @@
               <template #prefix>
                 <n-avatar circle :size="40" :src="schoolboy" />
               </template>
-              <n-thing :title="username + ' 在 开源组 创建了项目 hotGo？'">
+              <n-thing :title="username + ' 在开源组创建了项目 LingCDN？'">
                 <template #description
                   ><p class="text-xs text-gray-500">2021-07-04 09:37:16</p></template
                 >
@@ -178,7 +178,7 @@
               <template #prefix>
                 <n-avatar circle :size="40" :src="schoolboy" />
               </template>
-              <n-thing title="@It界风清扬，向hotGo提交了一个bug，抽时间看看吧！">
+              <n-thing title="@It界风清扬，向 LingCDN 提交了一个 bug，抽时间看看吧！">
                 <template #description
                   ><p class="text-xs text-gray-500">2021-07-04 22:37:16</p></template
                 >

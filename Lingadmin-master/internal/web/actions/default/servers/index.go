@@ -150,14 +150,14 @@ func (this *IndexAction) RunGet(params struct {
 		}
 		// Unix protocol not supported in current version
 		/*
-		if config.Unix != nil && config.Unix.IsOn {
-			for _, listen := range config.Unix.Listen {
-				portMaps = append(portMaps, maps.Map{
-					"protocol":  listen.Protocol,
-					"portRange": listen.Host,
-				})
+			if config.Unix != nil && config.Unix.IsOn {
+				for _, listen := range config.Unix.Listen {
+					portMaps = append(portMaps, maps.Map{
+						"protocol":  listen.Protocol,
+						"portRange": listen.Host,
+					})
+				}
 			}
-		}
 		*/
 		if config.UDP != nil && config.UDP.IsOn {
 			for _, listen := range config.UDP.Listen {

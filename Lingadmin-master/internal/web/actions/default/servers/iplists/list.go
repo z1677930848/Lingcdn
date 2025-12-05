@@ -12,7 +12,7 @@ func (this *ListAction) Init() {
 	this.Nav("", "", "list")
 }
 
-func (this *ListAction) RunGet(params struct{
+func (this *ListAction) RunGet(params struct {
 	ListId int64
 }) {
 	err := InitIPList(this.Parent(), params.ListId)

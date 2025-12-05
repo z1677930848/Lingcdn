@@ -44,15 +44,15 @@ func (this *IndexAction) RunGet(params struct{}) {
 }
 
 func (this *IndexAction) RunPost(params struct {
-	ProductName        string
-	AdminSystemName    string
-	ShowFinance        bool
-	ShowVersion        bool
-	Version            string
-	FaviconFile        *actions.File
-	LogoFile           *actions.File
-	DefaultPageSize    int
-	TimeZone           string
+	ProductName     string
+	AdminSystemName string
+	ShowFinance     bool
+	ShowVersion     bool
+	Version         string
+	FaviconFile     *actions.File
+	LogoFile        *actions.File
+	DefaultPageSize int
+	TimeZone        string
 
 	SupportModuleCDN bool
 	SupportModuleNS  bool

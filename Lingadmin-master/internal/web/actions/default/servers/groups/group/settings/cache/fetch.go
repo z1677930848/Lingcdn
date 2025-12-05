@@ -118,7 +118,6 @@ func (this *FetchAction) RunPost(params struct {
 		realKeys = append(realKeys, key)
 	}
 
-
 	// 校验Key
 	validateResp, err := this.RPC().HTTPCacheTaskKeyRPC().ValidateHTTPCacheTaskKeys(this.AdminContext(), &pb.ValidateHTTPCacheTaskKeysRequest{Keys: realKeys})
 	if err != nil {

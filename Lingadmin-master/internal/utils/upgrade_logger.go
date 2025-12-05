@@ -17,14 +17,14 @@ import (
 type UpgradeStatus string
 
 const (
-	StatusPending    UpgradeStatus = "pending"
+	StatusPending     UpgradeStatus = "pending"
 	StatusDownloading UpgradeStatus = "downloading"
-	StatusVerifying  UpgradeStatus = "verifying"
-	StatusInstalling UpgradeStatus = "installing"
-	StatusSuccess    UpgradeStatus = "success"
-	StatusFailed     UpgradeStatus = "failed"
-	StatusRollback   UpgradeStatus = "rollback"
-	StatusCancelled  UpgradeStatus = "cancelled"
+	StatusVerifying   UpgradeStatus = "verifying"
+	StatusInstalling  UpgradeStatus = "installing"
+	StatusSuccess     UpgradeStatus = "success"
+	StatusFailed      UpgradeStatus = "failed"
+	StatusRollback    UpgradeStatus = "rollback"
+	StatusCancelled   UpgradeStatus = "cancelled"
 )
 
 // UpgradeLog 升级日志

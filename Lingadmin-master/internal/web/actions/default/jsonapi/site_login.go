@@ -75,13 +75,13 @@ func (this *SiteLoginAction) RunPost(params struct {
 	admin := adminResp.Admin
 
 	this.SuccessData(map[string]interface{}{
-		"token":    token,
-		"sid":      token, // 兼容 hotgo 前端
-		"expireAt": expireAt,
-		"id":       adminId,
-		"username": admin.Username,
-		"realName": admin.Fullname,
-		"avatar":   "",
+		"token":       token,
+		"sid":         token, // 兼容 hotgo 前端
+		"expireAt":    expireAt,
+		"id":          adminId,
+		"username":    admin.Username,
+		"realName":    admin.Fullname,
+		"avatar":      "",
 		"permissions": []string{"*"}, // 简化权限，后续可扩展
 	})
 }

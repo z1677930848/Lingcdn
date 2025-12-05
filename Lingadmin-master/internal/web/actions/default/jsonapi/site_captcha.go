@@ -23,8 +23,8 @@ var captchaStore = &CaptchaStorage{
 }
 
 type CaptchaInfo struct {
-	Code      string
-	ExpireAt  time.Time
+	Code     string
+	ExpireAt time.Time
 }
 
 type CaptchaStorage struct {
@@ -150,4 +150,3 @@ func drawChar(img *image.RGBA, x, y int, c byte, col color.Color) {
 		}
 	}
 }
-

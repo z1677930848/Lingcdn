@@ -185,10 +185,10 @@ func (this *IndexAction) RunGet(params struct {
 	this.Data["regions"] = regionMap
 
 	// WAF
-	var wafInfos = map[int64]maps.Map{} // set id => WAF Map
-	var wafPolicyCacheMap = map[int64]*pb.HTTPFirewallPolicy{} // id => *pb.HTTPFirewallPolicy
+	var wafInfos = map[int64]maps.Map{}                          // set id => WAF Map
+	var wafPolicyCacheMap = map[int64]*pb.HTTPFirewallPolicy{}   // id => *pb.HTTPFirewallPolicy
 	var wafGroupCacheMap = map[int64]*pb.HTTPFirewallRuleGroup{} // id => *pb.HTTPFirewallRuleGroup
-	var wafSetCacheMap = map[int64]*pb.HTTPFirewallRuleSet{} // id => *pb.HTTPFirewallRuleSet
+	var wafSetCacheMap = map[int64]*pb.HTTPFirewallRuleSet{}     // id => *pb.HTTPFirewallRuleSet
 	for _, wafMap := range wafMaps {
 		var policyId = wafMap.GetInt64("policyId")
 		var groupId = wafMap.GetInt64("groupId")

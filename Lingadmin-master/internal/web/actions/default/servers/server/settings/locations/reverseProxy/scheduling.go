@@ -18,7 +18,7 @@ func (this *SchedulingAction) Init() {
 }
 
 func (this *SchedulingAction) RunGet(params struct {
-	ServerId int64
+	ServerId   int64
 	LocationId int64
 }) {
 	reverseProxyResp, err := this.RPC().HTTPLocationRPC().FindAndInitHTTPLocationReverseProxyConfig(this.AdminContext(), &pb.FindAndInitHTTPLocationReverseProxyConfigRequest{LocationId: params.LocationId})

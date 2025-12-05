@@ -157,17 +157,17 @@ func (this *IndexAction) RunPost(params struct{}) {
 	}
 	// MonitorNodeUpgradeInfo not available in EdgeCommon 1.0.0
 	/*
-	if resp.MonitorNodeUpgradeInfo != nil {
-		this.Data["monitorNodeUpgradeInfo"] = maps.Map{
-			"count":   resp.MonitorNodeUpgradeInfo.CountNodes,
-			"version": resp.MonitorNodeUpgradeInfo.NewVersion,
+		if resp.MonitorNodeUpgradeInfo != nil {
+			this.Data["monitorNodeUpgradeInfo"] = maps.Map{
+				"count":   resp.MonitorNodeUpgradeInfo.CountNodes,
+				"version": resp.MonitorNodeUpgradeInfo.NewVersion,
+			}
+		} else {
+			this.Data["monitorNodeUpgradeInfo"] = maps.Map{
+				"count":   0,
+				"version": "",
+			}
 		}
-	} else {
-		this.Data["monitorNodeUpgradeInfo"] = maps.Map{
-			"count":   0,
-			"version": "",
-		}
-	}
 	*/
 	this.Data["monitorNodeUpgradeInfo"] = maps.Map{
 		"count":   0,
