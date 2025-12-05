@@ -2,9 +2,9 @@ package teaconst
 
 const (
 	// 版本号：管理员端发布版本，每次发布需更新
-	Version = "1.1.6"
+	Version = "1.1.7"
 
-	// APINodeVersion：打包时期望的 EdgeAPI / API 节点版本号，需与 API 同步更新
+	// APINodeVersion：打包时用于校验 EdgeAPI / API 节点版本号，需要与 API 同步更新
 	APINodeVersion = "1.1.0"
 
 	// 产品名称（英文）
@@ -32,5 +32,5 @@ const (
 	SystemdServiceName = "lingcdnadmin"
 
 	// 更新检查地址（可通过环境变量或 CI 覆盖）
-	UpdatesURL = "http://dl.lingcdn.cloud/api/boot/versions?os=${os}&arch=${arch}"
+	UpdatesURL = "https://dl.lingcdn.cloud/api/boot/versions?os=${os}&arch=${arch}"
 )
