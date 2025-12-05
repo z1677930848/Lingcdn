@@ -1,0 +1,18 @@
+name: lingcdn-docker-demo
+services:
+  demo-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lingcdn/docker-demo:local
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DEMO_MESSAGE: "Lingcdn Docker 示例容器就绪"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

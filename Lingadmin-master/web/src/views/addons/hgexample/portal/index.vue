@@ -1,17 +1,17 @@
 <template>
   <div>
-    <n-card title="应用入口" class="proCard">
+    <n-card title="Example Portal" class="proCard">
       <n-tabs type="line" animated>
-        <n-tab-pane name="admin" tab="后台API">
+        <n-tab-pane name="admin" tab="Admin API">
           <Form path="/admin/hgexample/index/test?name=LingCDN" />
         </n-tab-pane>
-        <n-tab-pane name="api" tab="前台API">
+        <n-tab-pane name="api" tab="Public API">
           <Form path="/api/hgexample/index/test?name=LingCDN" />
         </n-tab-pane>
-        <n-tab-pane name="home" tab="前台页面">
+        <n-tab-pane name="home" tab="Home">
           <Form path="/home/hgexample/index/test?name=LingCDN" />
         </n-tab-pane>
-        <n-tab-pane name="static" tab="静态目�?>
+        <n-tab-pane name="static" tab="Static Assets">
           <Form path="/addons/hgexample/default" />
         </n-tab-pane>
         <n-tab-pane name="websocket" tab="Websocket">
@@ -33,5 +33,3 @@
     padding-left: 4px;
   }
 </style>
-
-

@@ -21,6 +21,10 @@ $updateType = $_POST['update_type'] ?? $_GET['update_type'] ?? 'unknown';
 
 // 获取客户端信息
 $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+if (is_string($ip) && strpos($ip, ',') !== false) {
+    // 取 XFF 中的第一个 IP
+    $ip = trim(explode(',', $ip)[0]);
+}
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 $timestamp = date('Y-m-d H:i:s');
 

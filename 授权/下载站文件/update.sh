@@ -44,6 +44,7 @@ API_CURRENT_VERSION="unknown"
 NODE_CURRENT_VERSION="unknown"
 OS=""
 ARCH=""
+NODE_INSTALL_PATH="${INSTALL_DIR}/ling-node"
 
 show_logo() {
     cat <<'EOF'
@@ -100,11 +101,20 @@ check_commands() {
             apt-get install -y curl tar unzip coreutils
         elif command -v yum &> /dev/null; then
             yum install -y curl tar unzip coreutils
+        elif command -v apk &> /dev/null; then
+            apk add --no-cache curl tar unzip coreutils
         else
             print_error "cannot auto install dependencies, please install: ${missing[*]}"
             exit 1
         fi
     fi
+
+    for cmd in "${commands[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            print_error "required command $cmd is missing after auto-installation attempts"
+            exit 1
+        fi
+    done
 
     if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
         print_warning "sha256sum/shasum not found, SHA256 validation will be skipped"
@@ -147,9 +157,10 @@ detect_installed_components() {
         print_success "found LingCDN API v${API_CURRENT_VERSION}"
     fi
 
-    local node_bin="${INSTALL_DIR}/ling-node/bin/ling-node"
+    local node_bin="${NODE_INSTALL_PATH}/bin/ling-node"
     if [ ! -x "$node_bin" ] && [ -x "/usr/local/bin/ling-node" ]; then
-        node_bin="/usr/local/bin/ling-node"
+        NODE_INSTALL_PATH="/usr/local"
+        node_bin="${NODE_INSTALL_PATH}/bin/ling-node"
     fi
     if [ -x "$node_bin" ]; then
         NODE_CURRENT_VERSION=$(get_component_version "$node_bin")
@@ -256,15 +267,24 @@ create_backup() {
     local ts=$(date +%Y%m%d_%H%M%S)
     local backup_file="${BACKUP_DIR}/ling-${component}-${ts}.tar.gz"
     if [ "$component" = "admin" ]; then
-        tar -czf "$backup_file" -C "$INSTALL_DIR" bin/ling-admin web configs 2>/dev/null || true
+        tar -czf "$backup_file" -C "$INSTALL_DIR" bin/ling-admin web configs
     elif [ "$component" = "api" ]; then
-        tar -czf "$backup_file" -C "$INSTALL_DIR" ling-api 2>/dev/null || true
+        tar -czf "$backup_file" -C "$INSTALL_DIR" ling-api
     elif [ "$component" = "node" ]; then
-        if [ -d "${INSTALL_DIR}/ling-node" ]; then
-            tar -czf "$backup_file" -C "$INSTALL_DIR" ling-node 2>/dev/null || true
+        local default_node_dir="${INSTALL_DIR}/ling-node"
+        local node_bin="${NODE_INSTALL_PATH}/bin/ling-node"
+        if [ "$NODE_INSTALL_PATH" = "$default_node_dir" ] && [ -d "$default_node_dir" ]; then
+            tar -czf "$backup_file" -C "$INSTALL_DIR" ling-node
+        elif [ -x "$node_bin" ]; then
+            tar -czf "$backup_file" -C "$(dirname "$node_bin")" "$(basename "$node_bin")"
         else
-            tar -czf "$backup_file" -C "/usr/local/bin" ling-node 2>/dev/null || true
+            print_error "no node files found to backup"
+            exit 1
         fi
+    fi
+    if [ ! -s "$backup_file" ]; then
+        print_error "backup failed for ${component}, aborting update"
+        exit 1
     fi
     print_success "backup created: $backup_file"
     ls -t "${BACKUP_DIR}"/ling-${component}-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
@@ -290,36 +310,49 @@ stop_service() {
 verify_integrity() {
     local file=$1
     local ok=false
+    local attempted=false
     if [ -n "$FILE_SHA256" ] && [ "$FILE_SHA256" != "null" ]; then
+        attempted=true
         local sha=""
         if command -v sha256sum &> /dev/null; then
             sha=$(sha256sum "$file" | awk '{print $1}')
         elif command -v shasum &> /dev/null; then
             sha=$(shasum -a 256 "$file" | awk '{print $1}')
         fi
-        if [ -n "$sha" ] && [ "$sha" = "$FILE_SHA256" ]; then
-            print_success "SHA256 verification passed"
-            ok=true
+        if [ -n "$sha" ]; then
+            if [ "$sha" = "$FILE_SHA256" ]; then
+                print_success "SHA256 verification passed"
+                ok=true
+            else
+                print_error "SHA256 mismatch (expected $FILE_SHA256 got ${sha:-N/A})"
+                exit 1
+            fi
         else
-            print_warning "SHA256 mismatch (expected $FILE_SHA256 got ${sha:-N/A})"
+            print_warning "sha256sum/shasum not available, skipping SHA256 verification"
         fi
     fi
     if [ "$ok" = false ] && [ -n "$FILE_MD5" ] && [ "$FILE_MD5" != "null" ]; then
+        attempted=true
         local md5
         md5=$(md5sum "$file" | awk '{print $1}')
         if [ "$md5" = "$FILE_MD5" ]; then
             print_success "MD5 verification passed"
             ok=true
         else
-            print_warning "MD5 mismatch (expected $FILE_MD5 got $md5)"
+            print_error "MD5 mismatch (expected $FILE_MD5 got $md5)"
+            exit 1
         fi
     fi
     if [ "$ok" = false ]; then
-        print_warning "package integrity could not be confirmed"
+        if [ "$attempted" = true ]; then
+            print_error "package integrity could not be confirmed, aborting update"
+            exit 1
+        fi
+        print_warning "no checksum provided, skipping integrity verification"
     fi
 }
 
-download_and_install() {
+download_package() {
     local component=$1
     local display=$2
     local tmp_dir
@@ -329,10 +362,23 @@ download_and_install() {
         file_ext=".zip"
     fi
     local package_file="${tmp_dir}/package${file_ext}"
-    print_info "downloading ${display} v${VERSION}"
-    curl "${CURL_OPTS[@]}" -o "$package_file" "$DOWNLOAD_URL" --progress-bar
+    print_info "pre-downloading ${display} v${VERSION}"
+    if ! curl "${CURL_OPTS[@]}" -o "$package_file" "$DOWNLOAD_URL" --progress-bar; then
+        rm -rf "$tmp_dir"
+        print_error "failed to download ${display}"
+        exit 1
+    fi
     verify_integrity "$package_file"
+    echo "${tmp_dir}|${package_file}|${file_ext}"
+}
 
+install_from_package() {
+    local component=$1
+    local display=$2
+    local package_file=$3
+    local file_ext=$4
+    local tmp_dir=$5
+    [ -z "$tmp_dir" ] && tmp_dir=$(dirname "$package_file")
     if [ "$file_ext" = ".tar.gz" ]; then
         tar -xzf "$package_file" -C "$tmp_dir"
     else
@@ -343,7 +389,7 @@ download_and_install() {
     if [ "$component" = "api" ]; then
         install_path="$INSTALL_DIR/ling-api"
     elif [ "$component" = "node" ]; then
-        install_path="$INSTALL_DIR/ling-node"
+        install_path="$NODE_INSTALL_PATH"
     fi
     mkdir -p "$install_path/bin"
 
@@ -388,7 +434,7 @@ start_service() {
         if [ "$component" = "api" ]; then
             install_path="$INSTALL_DIR/ling-api"
         elif [ "$component" = "node" ]; then
-            install_path="$INSTALL_DIR/ling-node"
+            install_path="$NODE_INSTALL_PATH"
         fi
         mkdir -p "${install_path}/logs"
         if nohup "${install_path}/bin/ling-${component}" > "${install_path}/logs/ling-${component}.log" 2>&1 & then
@@ -411,8 +457,10 @@ verify_update() {
     elif [ "$component" = "api" ]; then
         installed=$(get_component_version "${INSTALL_DIR}/ling-api/bin/ling-api")
     elif [ "$component" = "node" ]; then
-        local node_bin="${INSTALL_DIR}/ling-node/bin/ling-node"
-        [ ! -x "$node_bin" ] && node_bin="/usr/local/bin/ling-node"
+        local node_bin="${NODE_INSTALL_PATH}/bin/ling-node"
+        if [ ! -x "$node_bin" ] && [ -x "/usr/local/bin/ling-node" ]; then
+            node_bin="/usr/local/bin/ling-node"
+        fi
         installed=$(get_component_version "$node_bin")
     fi
     if [ "$installed" = "$expected" ]; then
@@ -435,9 +483,12 @@ update_component() {
         return
     fi
     print_warning "${name} will be updated: v${current} -> v${VERSION}"
+    local download_info
+    download_info=$(download_package "$component" "$name")
+    IFS='|' read -r pkg_dir package_file file_ext <<< "$download_info"
     create_backup "$component"
     stop_service "$component"
-    download_and_install "$component" "$name"
+    install_from_package "$component" "$name" "$package_file" "$file_ext" "$pkg_dir"
     start_service "$component"
     verify_update "$component" "$VERSION"
 }
