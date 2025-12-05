@@ -49,23 +49,30 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Cache node modules
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Cache pnpm store
       uses: actions/cache@v4
       with:
         path: |
-          ~/.npm
+          ~/.local/share/pnpm/store
           web/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('web/package.json') }}
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('web/pnpm-lock.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-node-
+          ${{ runner.os }}-pnpm-
 
     - name: Install frontend dependencies
+      working-directory: web
       run: |
-        npm --prefix web ci
+        pnpm install --no-frozen-lockfile
 
     - name: Build frontend
+      working-directory: web
       run: |
-        npm --prefix web run build
+        pnpm run build
 
     - name: Check gofmt
       run: |
