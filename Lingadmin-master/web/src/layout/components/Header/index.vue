@@ -1,6 +1,6 @@
 <template>
   <div class="layout-header">
-    <!--顶部菜单-->
+    <!-- top menu -->
     <div
       class="layout-header-left"
       v-if="navMode === 'horizontal' || (navMode === 'horizontal-mix' && mixMenu)"
@@ -16,9 +16,9 @@
         mode="horizontal"
       />
     </div>
-    <!--左侧菜单-->
+    <!-- left menu -->
     <div class="layout-header-left" v-else>
-      <!-- 菜单收起 -->
+      <!-- toggle menu -->
       <div
         class="ml-1 layout-header-trigger layout-header-trigger-min"
         @click="() => $emit('update:collapsed', !collapsed)"
@@ -30,7 +30,7 @@
           <MenuFoldOutlined />
         </n-icon>
       </div>
-      <!-- 刷新 -->
+      <!-- refresh -->
       <div
         class="mr-1 layout-header-trigger layout-header-trigger-min"
         v-if="headerSetting.isReload"
@@ -40,7 +40,7 @@
           <ReloadOutlined />
         </n-icon>
       </div>
-      <!-- 面包�?-->
+      <!-- breadcrumb -->
       <n-breadcrumb v-if="crumbsSetting.show">
         <template v-for="routeItem in breadcrumbList" :key="routeItem.name">
           <n-breadcrumb-item>
@@ -123,7 +123,7 @@
           </n-tooltip>
         </div>
       </div>
-      <!--切换全屏-->
+      <!-- toggle fullscreen -->
       <div class="layout-header-trigger layout-header-trigger-min">
         <n-tooltip placement="bottom">
           <template #trigger>
@@ -135,7 +135,7 @@
         </n-tooltip>
       </div>
 
-      <!-- 国际�?-->
+      <!-- i18n -->
       <div
         class="layout-header-trigger layout-header-trigger-min"
         v-if="userStore.loginConfig?.i18nSwitch"
@@ -158,7 +158,7 @@
         </n-dropdown>
       </div>
 
-      <!-- 个人中心 -->
+      <!-- profile -->
       <div class="layout-header-trigger layout-header-trigger-min">
         <n-dropdown trigger="click" @select="avatarSelect" :options="avatarOptions" show-arrow>
           <div class="avatar">
@@ -167,7 +167,7 @@
           </div>
         </n-dropdown>
       </div>
-      <!--设置-->
+      <!-- settings -->
       <div class="layout-header-trigger layout-header-trigger-min" @click="openSetting">
         <n-tooltip placement="bottom-end">
           <template #trigger>
@@ -180,7 +180,7 @@
       </div>
     </div>
   </div>
-  <!--项目配置-->
+  <!-- project settings -->
   <ProjectSetting ref="drawerSetting" />
 
   <template>
