@@ -26,3 +26,6 @@ tmp/
 
 # MCP 配置
 .mcp.json
+
+# SSH keys（避免误提交）
+.ssh/
